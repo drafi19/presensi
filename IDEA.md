@@ -1,0 +1,1 @@
+Project ini bertujuan untuk membuat sebuah apliaksi presensi yang diintegrasikan dengan model AI (Face Recognition). Aku berfokus pada model AI pada project ini. Project ini dikerjakan oleh dua orang (Aku dan Raihan), dia bertanggung jawab dalam mobile development-nya

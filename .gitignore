@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environment / secrets
+.env
+.env.*
+
+# Data & model artifacts (large / privacy-sensitive — never commit)
+data/
+models/
+*.onnx
+*.npz
+*.npy
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
