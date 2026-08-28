@@ -54,8 +54,9 @@ def test_match_1to1():
 CFG = dict(threshold=0.40, consensus_ratio=0.70, frames_min_valid=3)
 
 
-def fr(ok=True, reason=None, spoof=False, user="budi", sim=0.9):
-    return {"ok": ok, "reason": reason, "spoof": spoof, "user": user, "sim": sim}
+def fr(ok=True, reason=None, spoof=False, user="budi", sim=0.9, p_real=None):
+    return {"ok": ok, "reason": reason, "spoof": spoof, "user": user, "sim": sim,
+            "p_real": p_real}
 
 
 def test_vote_match_konsisten():
@@ -81,10 +82,10 @@ def test_vote_no_match_konsensus_pecah():
 
 
 def test_vote_spoof():
-    frames = [fr(spoof=True, user=None, sim=None)] * 3 + [fr(sim=0.9)]
+    frames = [fr(spoof=True, user=None, sim=None, p_real=0.3)] * 3 + [fr(sim=0.9)]
     out = vote_frame_results(frames, **CFG)
     assert out["status"] == "spoof"
-    assert out["confidence"] == pytest.approx(0.25)  # p_real = 1/4 frame
+    assert out["confidence"] == pytest.approx(0.3)  # mean p_real frame spoof
 
 
 def test_vote_no_face_dominan():
@@ -103,3 +104,11 @@ def test_vote_kosong():
     out = vote_frame_results([], **CFG)
     assert out["status"] == "no_face"
     assert out["frames_total"] == 0
+
+
+def test_vote_frame_terlalu_sedikit():
+    # 2 frame valid, min 3 -> batch tak sah utk voting (anti enroll foto 1x)
+    frames = [fr(sim=0.9), fr(sim=0.9)]
+    out = vote_frame_results(frames, **CFG)
+    assert out["status"] == "low_quality"
+    assert out["frames_valid"] == 2

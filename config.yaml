@@ -16,6 +16,10 @@ verify:
 match:
   # placeholder M1 — angka final dari evaluasi M4 (FAR/FRR), JANGAN di-tune manual
   threshold: 0.40
+  aggregation: max          # max = cosine terbaik antar gambar enroll (robust pose)
+
+enroll:
+  min_images: 3             # minimal gambar lolos agar enroll sah (ideal 5-10, DESAIN §5)
 
 quality:
   blur_min_variance: 60.0     # variance Laplacian minimum

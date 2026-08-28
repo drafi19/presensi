@@ -15,6 +15,7 @@ import yaml
 from .antispoof import AntiSpoof
 from .detector import FaceEngine
 from .matcher import match_1to1, match_score
+from ..storage.gallery import GalleryStore
 from ..quality.quality import check_frame, face_too_small
 
 log = logging.getLogger(__name__)
@@ -43,13 +44,80 @@ class VerifyPipeline:
         log.info("Memuat anti-spoof ensemble (%d model) ...", len(model_plan))
         self.antispoof = AntiSpoof(PROJECT_ROOT / as_cfg["model_dir"], model_plan=model_plan)
 
-        self.gallery: dict[str, np.ndarray] = {}  # M2: pindah ke storage module
+        self.store = GalleryStore(
+            PROJECT_ROOT / self.cfg["paths"]["gallery_dir"],
+            model_version=self.cfg["project"]["model_version"],
+        )
+        self.gallery = self.store.load_all()  # user_id -> matrix (n, 512)
         self.threshold = float(self.cfg["match"]["threshold"])
+        self.aggregation = self.cfg["match"].get("aggregation", "max")
 
     # ------------------------------------------------------------------ #
-    def enroll(self, user_id: str, embedding: np.ndarray) -> None:
-        """Daftarkan satu embedding ke gallery (in-memory v1)."""
-        self.gallery[user_id] = np.asarray(embedding, dtype=np.float32)
+    def enroll_user(self, user_id: str, images: list[np.ndarray],
+                    min_images: int | None = None) -> dict:
+        """Enroll: tiap gambar lewat quality+detect(1 wajah)+antispoof+embed.
+
+        Gambar ditolak satu-satu dengan alasan eksplisit (kontrak §7); enroll
+        sah bila >= min_images gambar lolos (DESAIN §5). Gagal total tidak
+        mengubah galeri.
+        """
+        min_required = int(min_images or self.cfg["enroll"]["min_images"])
+        accepted: list[np.ndarray] = []
+        rejected: list[dict] = []
+
+        for idx, img in enumerate(images):
+            def rej(reason: str) -> None:
+                rejected.append({"index": idx, "reason": reason})
+
+            ok, reason = check_frame(img, self.cfg["quality"])
+            if not ok:
+                rej(reason or "low_quality")
+                continue
+
+            faces = self.engine.detect(img)
+            if not faces:
+                rej("no_face")
+                continue
+            if len(faces) > 1:
+                rej("multiple_faces")
+                continue
+            face = faces[0]
+
+            x1, y1, x2, y2 = (float(v) for v in face.bbox)
+            if face_too_small((int(x1), int(y1), int(x2 - x1), int(y2 - y1)),
+                              self.cfg["quality"]["face_min_px"]):
+                rej("face_too_small")
+                continue
+
+            label, p_real = self.antispoof.predict(
+                img, (int(x1), int(y1), int(x2 - x1), int(y2 - y1)))
+            if label != 1:
+                rej(f"spoof(p_real={p_real:.2f})")
+                continue
+
+            emb = self.engine.embedding(face)
+            if emb is None:
+                rej("embedding_failed")
+                continue
+            accepted.append(emb)
+
+        summary = {
+            "user_id": user_id,
+            "enrolled": False,
+            "accepted": len(accepted),
+            "min_required": min_required,
+            "rejected": rejected,
+            "model_version": self.cfg["project"]["model_version"],
+        }
+        if len(accepted) < min_required:
+            return summary
+
+        embs = np.stack(accepted).astype(np.float32)
+        self.store.upsert(user_id, embs, n_images=len(images))
+        self.gallery[user_id] = embs
+        summary["enrolled"] = True
+        summary["n_embeddings"] = int(embs.shape[0])
+        return summary
 
     def verify_frame(self, img_bgr: np.ndarray, claimed_user: str | None = None) -> dict:
         """Pipeline lengkap satu frame. Return dict untuk matcher.vote_frame_results."""
@@ -100,7 +168,7 @@ class VerifyPipeline:
             out["ok"] = True
             out["spoof"] = False
             out["user"] = claimed_user
-            out["sim"] = match_1to1(emb, enrolled)
+            out["sim"] = match_1to1(emb, enrolled, aggregation=self.aggregation)
             return out
 
         if not self.gallery:
