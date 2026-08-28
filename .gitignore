@@ -18,6 +18,7 @@ models/
 *.onnx
 *.npz
 *.npy
+*.pth
 
 # OS / editor
 .DS_Store

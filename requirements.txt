@@ -1,0 +1,18 @@
+# Runtime (Python 3.11, Windows/Linux)
+numpy<2            # insightface build belum stabil dengan numpy 2.x
+onnxruntime>=1.20  # CPU inference (SCRFD + ArcFace)
+opencv-python>=4.9
+pyyaml
+
+# Face recognition stack
+# NOTE Windows: insightface butuh compiler MSVC C++ (Build Tools "Desktop development with C++")
+# dan Cython saat build. Install dengan:
+#   uv pip install cython
+#   uv pip install --no-build-isolation insightface
+cython
+insightface
+
+# Anti-spoofing (MiniFASNet, dari Silent-Face-Anti-Spoofing)
+# CPU wheel:
+#   uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch
