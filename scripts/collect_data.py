@@ -45,7 +45,7 @@ def main() -> int:
 
     if args.check:
         root = Path(args.check)
-        files = list_images(root)
+        files = list_images(root) if root.is_dir() else ([root] if root.exists() else [])
         if not files:
             print(f"Tidak ada gambar di {root}")
             return 1
