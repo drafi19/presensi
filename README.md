@@ -1,65 +1,54 @@
 # Presensi — Face Recognition Attendance System
 
-A clock-in/clock-out attendance system that verifies users by face.
-Users record a short video on their phone; a Python server runs
-detection → anti-spoofing → face embedding → matching, and records the
-result in a server-side audit log.
+Sistem presensi dengan verifikasi wajah: user presensi dari app mobile,
+server AI memverifikasi wajah (dengan anti-spoofing) dan mencatat hasilnya
+di audit log server.
 
-> Status: **M1–M3 selesai** — pipeline, persistent gallery, dan REST API live & teruji.
-> Full technical design: [docs/DESAIN.md](docs/DESAIN.md) · API contract untuk mobile: [docs/API.md](docs/API.md) · Data & evaluasi: [docs/PENGUMPULAN_DATA.md](docs/PENGUMPULAN_DATA.md)
+**Status: tahap perancangan & pembagian kerja. Implementasi dikerjakan per
+divisi di branch masing-masing; branch `main` adalah kerangka bersama.**
 
-## Quickstart
+| Branch | Isi |
+|--------|-----|
+| [`main`](https://github.com/drafi19/presensi) | kerangka monorepo + dokumen desain (halaman ini) |
+| [`ai`](https://github.com/drafi19/presensi/tree/ai) | pengerjaan penuh bagian AI (pipeline, API, evaluasi) |
+| `mobile` | (Raihan) aplikasi mobile |
 
-```bash
-uv sync                     # buat/sinkron .venv dari pyproject.toml
-uv run python scripts/download_models.py          # buffalo_l (~350 MB)
-uv run python scripts/fetch_antispoof_weights.py  # 2 bobot MiniFASNet
-uv run python scripts/smoke_test.py --image data/test/face1.jpg
-uv run python scripts/run_api.py                  # API di :8000, docs di /docs
-```
-
-> Windows + insightface butuh MSVC C++ Build Tools ("Desktop development with C++")
-> — pyproject.toml sudah mengatur build-nya (`no-build-isolation`).
-
-## How it works
-
-1. User logs in on the mobile app (the account binds the device to a `user_id`).
-2. The app verifies the user is inside the work area (GPS/geofence — app side).
-3. The app records ~2 seconds of video and sends sampled JPEG frames + `user_id` to the API.
-4. The server pipeline, per frame:
-   - face detection (SCRFD)
-   - anti-spoofing (MiniFASNet — rejects photo/replay attacks)
-   - face embedding (ArcFace, 512-d)
-   - cosine-similarity matching against the enrolled gallery (1:1 verification)
-   - per-frame voting (median similarity + ≥70% consensus)
-5. Server returns `match | no_match | spoof | no_face | low_quality` and
-   writes an audit-log entry. Attendance records are derived from server
-   logs, not app claims.
-
-## Tech stack
-
-- Python · FastAPI · onnxruntime (CPU)
-- InsightFace `buffalo_l` (SCRFD detection + ArcFace embedding)
-- MiniFASNet (Silent-Face-Anti-Spoofing)
-- SQLite + NumPy embedding gallery
-
-## Repository layout
+## Struktur
 
 ```
-docs/          technical design + API contract
-src/presensi/  API (FastAPI), pipeline, storage, quality gates
-scripts/       enroll/verify CLIs, model setup, acceptance tests
-tests/         unit tests (19) + acceptance (7/7)
+presensi/
+├── ai/                  bagian AI  (dikerjakan di branch ai)
+│   ├── models/
+│   ├── inference/
+│   └── README.md
+├── mobile/              bagian mobile (Raihan)
+│   ├── lib/
+│   ├── assets/
+│   └── README.md
+├── src/presensi/        backend/API/core (diisi saat integrasi)
+├── docs/                dokumen desain — milik bersama
+├── third_party/         pustaka pihak ketiga + lisensi
+└── README.md
 ```
 
-## Team
+## Dokumen utama
 
-- [@drafi19](https://github.com/drafi19) — AI/ML: detection, anti-spoofing,
-  embedding, matching, evaluation
-- [@eannnih](https://github.com/eannnih) — Mobile development: app, auth, GPS/geofence
+- [docs/DESAIN.md](docs/DESAIN.md) — desain teknis end-to-end (arsitektur,
+  keputusan teknis + alternatifnya, pipeline, evaluasi, roadmap)
+- [docs/API.md](docs/API.md) — kontrak API v1 untuk mobile client
+- [docs/PENGUMPULAN_DATA.md](docs/PENGUMPULAN_DATA.md) — protokol pengumpulan
+  data & evaluasi (FAR/FRR, anti-spoof)
 
-## Roadmap
+## Alur sistem (ringkas)
 
-M1 environment + models running → M2 pipeline + gallery → M3 API + audit log →
-M4 data collection + FAR/FRR evaluation + threshold tuning → M5 (optional)
-live WebSocket, anti-spoof fine-tuning
+1. User login di app (akun mengikat HP ke `user_id`)
+2. App memvalidasi user di area kerja (GPS/geofence — sisi mobile)
+3. App merekam ±2 detik → mengirim batch frame JPEG + `user_id` ke API
+4. Server: deteksi wajah → anti-spoofing → embedding → matching → verdict
+   `match / no_match / spoof / no_face / low_quality`
+5. Server menulis audit log; record presensi resmi diturunkan dari log server
+
+## Tim
+
+- [@drafi19](https://github.com/drafi19) — AI/ML
+- Raihan — Mobile development

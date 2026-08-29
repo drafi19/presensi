@@ -1,7 +1,12 @@
-# Python
+# --- umum ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python (dipakai di branch ai; dicatat di sini agar aman saat merge)
 __pycache__/
 *.py[cod]
-*.egg-info/
 .venv/
 venv/
 .pytest_cache/
@@ -12,7 +17,7 @@ venv/
 .env
 .env.*
 
-# Data & model artifacts (large / privacy-sensitive — never commit)
+# Data & model artifacts (besar / biometrik — TIDAK PERNAH masuk git)
 data/
 models/
 *.onnx
@@ -20,8 +25,9 @@ models/
 *.npy
 *.pth
 
-# OS / editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
+# Mobile (dipakai di branch mobile; standar Flutter)
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+mobile/android/.gradle/
+mobile/ios/Pods/
