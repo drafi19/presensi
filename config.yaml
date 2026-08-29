@@ -28,10 +28,12 @@ api:
   max_images: 20               # batas file per request (enroll/verify)
 
 quality:
-  blur_min_variance: 35.0     # variance Laplacian minimum (60 terlalu ketat utk webcam; kalibrasi final di M4c)
-  face_min_px: 112            # lebar bounding box wajah minimum (px)
-  brightness_min: 40.0        # mean brightness minimum (0-255)
-  brightness_max: 240.0
+  # MODE INTEGRASI-TEST: sengaja sangat longgar (Raihan testing flow, bukan akurasi).
+  # Kembalikan ke nilai kalibrasi saat M4c: blur 35-60, face_min 112, bright 40-240.
+  blur_min_variance: 5.0      # hampir semua lolos
+  face_min_px: 40             # wajah kecil pun lolos
+  brightness_min: 5.0
+  brightness_max: 250.0
 
 antispoof:
   model_dir: third_party/Silent-Face-Anti-Spoofing/resources/anti_spoof_models
