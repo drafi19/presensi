@@ -20,10 +20,10 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadF
 
 from ..pipeline.verify import VerifyPipeline, load_config
 from .audit import AuditLog
+from .liveness_api import router as liveness_router
+from .runtime import _state, read_frames, require_key
 
 log = logging.getLogger("presensi.api")
-
-_state: dict = {}
 
 
 @asynccontextmanager
@@ -40,34 +40,10 @@ async def lifespan(app: FastAPI):
     _state.clear()
 
 
-app = FastAPI(title="Presensi API", version="1.0.0",
-              description="Face-recognition attendance API (v1)", lifespan=lifespan)
-
-
-def require_key(x_api_key: str | None = Header(default=None)):
-    """Dependency auth: header X-API-Key (FastAPI memetakan x_api_key -> x-api-key)."""
-    cfg = _state["cfg"]
-    expected = os.environ.get("PRES_API_KEY") or cfg["api"]["api_key"]
-    if not x_api_key:
-        raise HTTPException(status_code=401, detail="X-API-Key header wajib")
-    if x_api_key != expected:
-        raise HTTPException(status_code=403, detail="API key salah")
-
-
-async def read_frames(files: list[UploadFile], max_images: int) -> list[np.ndarray]:
-    """File upload -> list ndarray BGR. Validasi jumlah & dekode JPEG/PNG."""
-    if not (1 <= len(files) <= max_images):
-        raise HTTPException(status_code=422,
-                            detail=f"jumlah frame harus 1..{max_images}")
-    frames = []
-    for f in files:
-        data = await f.read()
-        img = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
-        if img is None:
-            raise HTTPException(status_code=422,
-                                detail=f"file '{f.filename}' bukan JPEG/PNG valid")
-        frames.append(img)
-    return frames
+app = FastAPI(title="Presensi API", version="1.1.0",
+              description="Face-recognition attendance API (v1 + active liveness)",
+              lifespan=lifespan)
+app.include_router(liveness_router)
 
 
 # ---------------------------------------------------------------- endpoints ---
