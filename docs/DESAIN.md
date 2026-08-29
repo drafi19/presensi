@@ -54,7 +54,9 @@ deteksi wajah → anti-spoofing → ekstraksi embedding → matching terhadap us
 1. **Quality gate** — blur (variance Laplacian) + ukuran wajah minimum + brightness. Frame jelek dibuang sebelum proses berat.
 2. **Detection** — SCRFD (bagian InsightFace). >1 wajah = tolak (cegah presensi patungan); 0 wajah = tolak.
 3. **Alignment** — landmark 5 titik → similarity transform ke 112×112.
-4. **Anti-spoofing** — MiniFASNet pada crop wajah → label {real, spoof} + skor. Spoof → frame gugur, masuk voting.
+4. **Anti-spoofing** — dua lapisan:
+   - **Pasif**: MiniFASNet pada crop wajah → label {real, spoof} + skor p_real (skala 0–2, ensemble 2 model; keputusan argmax, label 1 = real).
+   - **Aktif (challenge-response)**: liveness.py — sesi interaktif kedip + senyum via geometri landmark 106-titik (ring mata 33–42 & 87–96, mulut 52–71, dipetakan empiris lewat 5 jangkar kps). Baseline personal (netral di awal sesi), state machine ber-timeout, urutan challenge diacak (anti-replay). Foto cetak & layar statis tidak mampu menyelesaikan challenge. Implementasi CLI: scripts/verify_liveness.py; unit test dgn wajah sintetis: tests/test_liveness.py.
 5. **Embedding** — ArcFace (w600k_r50) → vektor 512-d, dinormalisasi L2.
 6. **Matching** — cosine similarity vs gallery; ambil skor tertinggi; bandingkan **threshold global** (di-tune dari evaluasi, bukan angka hoki).
 
