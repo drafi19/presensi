@@ -56,7 +56,7 @@ tests/         unit tests (19) + acceptance (7/7)
 
 - [@drafi19](https://github.com/drafi19) — AI/ML: detection, anti-spoofing,
   embedding, matching, evaluation
-- Raihan — Mobile development: app, auth, GPS/geofence
+- [@eannnih](https://github.com/eannnih) — Mobile development: app, auth, GPS/geofence
 
 ## Roadmap
 
