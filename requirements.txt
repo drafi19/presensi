@@ -4,6 +4,11 @@ onnxruntime>=1.20  # CPU inference (SCRFD + ArcFace)
 opencv-python>=4.9
 pyyaml
 
+# API server
+fastapi
+uvicorn[standard]
+python-multipart   # parsing multipart/form-data (upload file)
+
 # Face recognition stack
 # NOTE Windows: insightface butuh compiler MSVC C++ (Build Tools "Desktop development with C++")
 # dan Cython saat build. Install dengan:

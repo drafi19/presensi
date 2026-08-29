@@ -5,8 +5,8 @@ Users record a short video on their phone; a Python server runs
 detection → anti-spoofing → face embedding → matching, and records the
 result in a server-side audit log.
 
-> Status: v1 design finalized — implementation starting.
-> Full technical design: [docs/DESAIN.md](docs/DESAIN.md)
+> Status: **M1–M3 selesai** — pipeline, persistent gallery, dan REST API live & teruji.
+> Full technical design: [docs/DESAIN.md](docs/DESAIN.md) · API contract untuk mobile: [docs/API.md](docs/API.md)
 
 ## How it works
 
@@ -33,10 +33,10 @@ result in a server-side audit log.
 ## Repository layout
 
 ```
-docs/          technical design documents
-src/presensi/  API, pipeline, storage, quality gates   (WIP)
-scripts/       enrollment / evaluation / tuning CLIs   (WIP)
-tests/         unit & integration tests                (WIP)
+docs/          technical design + API contract
+src/presensi/  API (FastAPI), pipeline, storage, quality gates
+scripts/       enroll/verify CLIs, model setup, acceptance tests
+tests/         unit tests (19) + acceptance (7/7)
 ```
 
 ## Team

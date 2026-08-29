@@ -21,6 +21,12 @@ match:
 enroll:
   min_images: 3             # minimal gambar lolos agar enroll sah (ideal 5-10, DESAIN §5)
 
+api:
+  host: 127.0.0.1
+  port: 8000
+  api_key: dev-key-change-me   # WAJIB override via env PRES_API_KEY di deployment
+  max_images: 20               # batas file per request (enroll/verify)
+
 quality:
   blur_min_variance: 60.0     # variance Laplacian minimum
   face_min_px: 112            # lebar bounding box wajah minimum (px)

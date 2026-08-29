@@ -119,6 +119,15 @@ class VerifyPipeline:
         summary["n_embeddings"] = int(embs.shape[0])
         return summary
 
+    def remove_user(self, user_id: str) -> bool:
+        """Hapus user dari galeri (disk + memori). Return True bila ada."""
+        ok = self.store.delete(user_id)
+        self.gallery.pop(user_id, None)
+        return ok
+
+    def user_info(self, user_id: str) -> dict | None:
+        return self.store.get_meta(user_id)
+
     def verify_frame(self, img_bgr: np.ndarray, claimed_user: str | None = None) -> dict:
         """Pipeline lengkap satu frame. Return dict untuk matcher.vote_frame_results."""
         out = {"ok": False, "reason": None, "spoof": None, "user": None, "sim": None,

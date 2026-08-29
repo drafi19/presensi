@@ -50,7 +50,9 @@ class GalleryStore:
         self.model_version = model_version
         self.strict_version = strict_version
 
-        self._conn = sqlite3.connect(self.db_path)
+        # check_same_thread=False: endpoint FastAPI sync jalan di threadpool;
+        # akses tulis diserialisasi SQLite (skala v1 aman)
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
         if strict_version:
@@ -119,6 +121,17 @@ class GalleryStore:
         cur = self._conn.execute(
             "SELECT user_id FROM enrollments ORDER BY user_id")
         return [r[0] for r in cur.fetchall()]
+
+    def get_meta(self, user_id: str) -> dict | None:
+        cur = self._conn.execute(
+            "SELECT user_id, n_images, n_embeddings, model_version, created_at,"
+            " updated_at FROM enrollments WHERE user_id=?", (user_id,))
+        row = cur.fetchone()
+        if row is None:
+            return None
+        keys = ["user_id", "n_images", "n_embeddings", "model_version",
+                "created_at", "updated_at"]
+        return dict(zip(keys, row))
 
     def get(self, user_id: str) -> np.ndarray | None:
         cur = self._conn.execute(
