@@ -1,4 +1,4 @@
-# API v1 — Kontrak Integrasi untuk Mobile Client
+# API v1.1 — Kontrak Integrasi untuk Mobile Client
 
 > Untuk: Raihan (mobile dev). Server AI side: @drafi19.
 > Base URL (dev): `http://<ip-server>:8000` — saat demo di satu WiFi, pakai IP LAN, bukan localhost.
@@ -47,7 +47,10 @@ Alasan reject yang mungkin: `no_face`, `multiple_faces`, `face_too_small`,
 `blurry(var=..)`, `too_dark(..)`, `too_bright(..)`, `spoof(p_real=..)`.
 Enroll ulang user yang sama = replace (aman dipanggil ulang).
 
-### `POST /api/verify` — presensi (verifikasi wajah)
+### `POST /api/verify` — presensi (verifikasi wajah, TANPA liveness)
+
+> Endpoint ini tetap tersedia (mode sederhana), tapi **alur presensi yang
+> disarankan memakai liveness** (bagian berikutnya).
 
 `multipart/form-data`:
 
@@ -81,6 +84,67 @@ Arti `status` & UI yang disarankan:
 {"user_id":"budi","n_images":5,"n_embeddings":5,
  "model_version":"buffalo_l","created_at":"...","updated_at":"..."}
 ```
+
+### Liveness aktif (ALUR PRESENSI YANG DISARANKAN) — kedip + senyum
+
+Dua panggilan. Challenge dikendalikan **server** (urutan diacak per sesi —
+anti-replay: rekaman video tidak bisa diputar ulang karena urutannya berubah).
+
+**Langkah 1 — `POST /api/verify/liveness/init`**
+
+```
+multipart/form-data: user_id (opsional, dari sesi login)
+```
+```json
+{
+  "session_id": "bqb-jGyLaTnyCkslueBUAFOwyOui1X-n",
+  "steps": ["smile", "blink"],            // ← urutan ACAK; ikuti ini!
+  "baseline_frames": 25,
+  "assumed_fps": 10.0,
+  "instructions": {"neutral": "hadap kamera, ekspresi netral",
+                   "blink": "KEDIP sekali", "smile": "SENYUM lebar"},
+  "registered": true
+}
+```
+App menampilkan instruksi sesuai `steps`:
+1. "netral" — user diam (±2.5 dtk; kamera merekam)
+2. langkah `steps[0]` (±3 dtk)
+3. langkah `steps[1]` (±3 dtk)
+
+Selama itu, app mengumpulkan frame JPEG **berurutan ±10 fps** (min **30** frame /
+3 detik; maks 40).
+
+**Langkah 2 — `POST /api/verify/liveness/{session_id}`**
+
+```
+multipart/form-data:
+  files  : frame BERURUTAN dari rekaman (30..40 JPEG, ±10 fps)
+  user_id: opsional (1:1); tanpa ini 1:N
+```
+
+```json
+// 200 — liveness lolos + verdict
+{"liveness": {"passed": true, "steps": ["smile","blink"], "missing": [],
+              "blink_detected": true, "smile_detected": true},
+ "status": "match", "user_id": "budi", "confidence": 0.94,
+ "frames_valid": 8, "frames_total": 8}
+
+// 409 — liveness GAGAL (challenge tak terpenuhi / video / foto)
+{"detail": {"status": "liveness_fail", "passed": false,
+            "steps": ["smile","blink"], "missing": ["blink","smile"],
+            "blink_detected": false, "smile_detected": false}}
+
+// 404 session tidak ada/kedaluwarsa · 409 session sudah dipakai (jangan replay!)
+// 422 jumlah frame salah / terlalu sedikit frame berwajah
+```
+
+Aturan penting untuk app:
+
+- **Session sekali pakai** — setelah complete (sukses/gagal), init lagi untuk sesi baru.
+- TTL session **5 menit** — mulai challenge dekat waktu init.
+- Frame **harus berurutan waktu** dari satu rekaman — jangan diacak/diambil dari galeri.
+- Kedip & senyum **mengikuti `steps`** dari server, bukan urutan tetap di app.
+- Setelah liveness gagal, UI: "verifikasi gagal — ulangi" → init lagi.
 
 ### `DELETE /api/enroll/{user_id}` — hapus user
 
@@ -122,7 +186,15 @@ curl -X POST $B/api/enroll -H "X-API-Key: $KEY" \
   -F "user_id=budi" \
   -F "files=@f1.jpg" -F "files=@f2.jpg" -F "files=@f3.jpg"
 
-# verify 1:1
+# presensi dgn liveness (alur disarankan)
+SID=$(curl -s -X POST $B/api/verify/liveness/init -H "X-API-Key: $KEY" \
+  -F "user_id=budi" | sed 's/.*"session_id":"\([^"]*\)".*/\1/')
+#   → app rekam mengikuti steps, lalu:
+curl -X POST $B/api/verify/liveness/$SID -H "X-API-Key: $KEY" \
+  -F "user_id=budi" \
+  -F "files=@f001.jpg" -F "files=@f002.jpg" ... # 30-40 frame berurutan
+
+# verifikasi tanpa liveness (mode sederhana)
 curl -X POST $B/api/verify -H "X-API-Key: $KEY" \
   -F "user_id=budi" \
   -F "files=@v1.jpg" -F "files=@v2.jpg" -F "files=@v3.jpg"
