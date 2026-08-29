@@ -66,40 +66,11 @@ class VerifyPipeline:
         rejected: list[dict] = []
 
         for idx, img in enumerate(images):
-            def rej(reason: str) -> None:
-                rejected.append({"index": idx, "reason": reason})
-
-            ok, reason = check_frame(img, self.cfg["quality"])
-            if not ok:
-                rej(reason or "low_quality")
-                continue
-
-            faces = self.engine.detect(img)
-            if not faces:
-                rej("no_face")
-                continue
-            if len(faces) > 1:
-                rej("multiple_faces")
-                continue
-            face = faces[0]
-
-            x1, y1, x2, y2 = (float(v) for v in face.bbox)
-            if face_too_small((int(x1), int(y1), int(x2 - x1), int(y2 - y1)),
-                              self.cfg["quality"]["face_min_px"]):
-                rej("face_too_small")
-                continue
-
-            label, p_real = self.antispoof.predict(
-                img, (int(x1), int(y1), int(x2 - x1), int(y2 - y1)))
-            if label != 1:
-                rej(f"spoof(p_real={p_real:.2f})")
-                continue
-
-            emb = self.engine.embedding(face)
+            emb, reason = self.embed_image(img)
             if emb is None:
-                rej("embedding_failed")
-                continue
-            accepted.append(emb)
+                rejected.append({"index": idx, "reason": reason})
+            else:
+                accepted.append(emb)
 
         summary = {
             "user_id": user_id,
@@ -118,6 +89,39 @@ class VerifyPipeline:
         summary["enrolled"] = True
         summary["n_embeddings"] = int(embs.shape[0])
         return summary
+
+    def embed_image(self, img: np.ndarray) -> tuple[np.ndarray | None, str | None]:
+        """Satu gambar -> (embedding, None) atau (None, reason).
+
+        Gerbang lengkap utk ENROLL & evaluasi: quality -> detect (harus tepat
+        1 wajah) -> face_too_small -> anti-spoof -> embed.
+        (verify_frame beda aturan: boleh multi-wajah, ambil wajah terbesar.)
+        """
+        ok, reason = check_frame(img, self.cfg["quality"])
+        if not ok:
+            return None, reason or "low_quality"
+
+        faces = self.engine.detect(img)
+        if not faces:
+            return None, "no_face"
+        if len(faces) > 1:
+            return None, "multiple_faces"
+        face = faces[0]
+
+        x1, y1, x2, y2 = (float(v) for v in face.bbox)
+        if face_too_small((int(x1), int(y1), int(x2 - x1), int(y2 - y1)),
+                          self.cfg["quality"]["face_min_px"]):
+            return None, "face_too_small"
+
+        label, p_real = self.antispoof.predict(
+            img, (int(x1), int(y1), int(x2 - x1), int(y2 - y1)))
+        if label != 1:
+            return None, f"spoof(p_real={p_real:.2f})"
+
+        emb = self.engine.embedding(face)
+        if emb is None:
+            return None, "embedding_failed"
+        return emb, None
 
     def remove_user(self, user_id: str) -> bool:
         """Hapus user dari galeri (disk + memori). Return True bila ada."""
