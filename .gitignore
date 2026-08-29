@@ -18,8 +18,9 @@ venv/
 .env.*
 
 # Data & model artifacts (besar / biometrik — TIDAK PERNAH masuk git)
-data/
-models/
+# di-anchor ke root agar ai/models/, mobile/assets/ dll tidak ikut ter-ignore
+/data/
+/models/
 *.onnx
 *.npz
 *.npy
