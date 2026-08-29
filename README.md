@@ -6,7 +6,20 @@ detection → anti-spoofing → face embedding → matching, and records the
 result in a server-side audit log.
 
 > Status: **M1–M3 selesai** — pipeline, persistent gallery, dan REST API live & teruji.
-> Full technical design: [docs/DESAIN.md](docs/DESAIN.md) · API contract untuk mobile: [docs/API.md](docs/API.md)
+> Full technical design: [docs/DESAIN.md](docs/DESAIN.md) · API contract untuk mobile: [docs/API.md](docs/API.md) · Data & evaluasi: [docs/PENGUMPULAN_DATA.md](docs/PENGUMPULAN_DATA.md)
+
+## Quickstart
+
+```bash
+uv sync                     # buat/sinkron .venv dari pyproject.toml
+uv run python scripts/download_models.py          # buffalo_l (~350 MB)
+uv run python scripts/fetch_antispoof_weights.py  # 2 bobot MiniFASNet
+uv run python scripts/smoke_test.py --image data/test/face1.jpg
+uv run python scripts/run_api.py                  # API di :8000, docs di /docs
+```
+
+> Windows + insightface butuh MSVC C++ Build Tools ("Desktop development with C++")
+> — pyproject.toml sudah mengatur build-nya (`no-build-isolation`).
 
 ## How it works
 

@@ -48,7 +48,7 @@ data/spoof/screen/*.jpg                serangan: wajah dari layar HP
 ## 4. Validasi on-the-spot
 
 ```bash
-python scripts/collect_data.py --check data/raw/rafi/s1
+uv run python scripts/collect_data.py --check data/raw/rafi/s1
 ```
 
 Menampilkan per foto: `OK` / ditolak + alasan (`no_face`, `blurry`,
@@ -66,17 +66,17 @@ Menampilkan per foto: `OK` / ditolak + alasan (`no_face`, `blurry`,
 
 ```bash
 # 1. Identifikasi 1:1 — kurva FAR/FRR + rekomendasi threshold @ FAR 1%
-python scripts/eval_pairs.py --raw data/raw --target-far 0.01
+uv run python scripts/eval_pairs.py --raw data/raw --target-far 0.01
 
 # lihat hasilnya, bila mau diterapkan ke config (tercatat eksplisit):
-python scripts/eval_pairs.py --raw data/raw --target-far 0.01 --apply
+uv run python scripts/eval_pairs.py --raw data/raw --target-far 0.01 --apply
 
 # 2. Anti-spoof — TPR/TNR/FPR pada threshold saat ini
-python scripts/eval_antispoof.py --spoof data/spoof --raw data/raw
+uv run python scripts/eval_antispoof.py --spoof data/spoof --raw data/raw
 
 # 3. Verifikasi mode app: video -> frame batch -> verdict
-python scripts/extract_frames.py --video rekaman_presensi.mp4 --out data/test/frames
-python scripts/verify_cli.py --user rafi --images data/test/frames/*.jpg
+uv run python scripts/extract_frames.py --video rekaman_presensi.mp4 --out data/test/frames
+uv run python scripts/verify_cli.py --user rafi --images data/test/frames/*.jpg
 ```
 
 Hasil evaluasi (angka + keputusan threshold) dicatat ke `docs/eval/REPORT.md`

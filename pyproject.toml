@@ -1,0 +1,31 @@
+[project]
+name = "presensi"
+version = "0.1.0"
+description = "Face-recognition attendance system (server side AI)"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "numpy<2",                # insightface build belum stabil dengan numpy 2.x
+    "onnxruntime>=1.20",      # CPU inference (SCRFD + ArcFace)
+    "opencv-python>=4.9",
+    "pyyaml",
+    "cython",                 # dibutuhkan build insightface (no-build-isolation)
+    "insightface",
+    "torch",                  # CPU wheel via index pytorch-cpu (lihat bawah)
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    "pytest",
+]
+
+[tool.uv]
+# insightface dibangun dari source tanpa build isolation (cython dari env project);
+# butuh MSVC C++ Build Tools di Windows
+no-build-isolation-package = ["insightface"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
