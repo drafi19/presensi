@@ -15,20 +15,38 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from presensi.pipeline.verify import VerifyPipeline, load_config  # noqa: E402
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description="Enroll user ke galeri")
-    ap.add_argument("--user", required=True)
-    ap.add_argument("--images", nargs="+", required=True)
-    ap.add_argument("--min-images", type=int, default=None)
-    args = ap.parse_args()
-
+def collect_images(paths: list[str]) -> list[np.ndarray]:
+    """Terima file gambar ATAU folder (di-expand rekursif) — aman dari shell
+    yang tidak men-expand glob (PowerShell menerima '*' literal)."""
+    exts = {".jpg", ".jpeg", ".png"}
+    files: list[Path] = []
+    for p in map(Path, paths):
+        if p.is_dir():
+            files.extend(sorted(q for q in p.rglob("*") if q.suffix.lower() in exts))
+        elif p.suffix.lower() in exts:
+            files.append(p)
+        else:
+            print(f"SKIP (bukan gambar/folder): {p}")
     images = []
-    for p in args.images:
-        img = cv2.imread(p)
+    for p in files:
+        img = cv2.imread(str(p))
         if img is None:
             print(f"SKIP (tidak terbaca): {p}")
             continue
         images.append(img)
+    return images
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Enroll user ke galeri")
+    ap.add_argument("--user", required=True)
+    ap.add_argument("--images", nargs="+", required=True,
+                    help="file gambar dan/atau folder (folder di-expand otomatis)")
+    ap.add_argument("--min-images", type=int, default=None)
+    args = ap.parse_args()
+
+    images = collect_images(args.images)
+    print(f"{len(images)} gambar dimuat")
 
     pipe = VerifyPipeline(load_config())
     summary = pipe.enroll_user(args.user, images, min_images=args.min_images)
