@@ -79,14 +79,18 @@ Subjek duduk ~50–70 cm dari kamera, kamera stabil (tumpu/buku). Jalankan:
 uv run python scripts/guided_capture.py --mode enroll --subject <nama> --session s1 --camera 1
 ```
 
-Program yang **mengarahkan**: tiap pose tampil besar di layar (tegak → condong
-kiri → condong kanan → mundur → dekat → terang → samping → remang), lengkap
+Program yang **mengarahkan**: tiap pose tampil besar di layar — **5 pose WAJIB**
+(tegak → condong kiri → condong kanan → mundur → dekat; semuanya geometris,
+bisa dilakukan kapan pun) + **3 pose OPSIONAL pencahayaan** (terang, samping,
+remang — tekan `s` untuk lewati bila lingkungan tak memungkinkan, mis. siang
+hari; variasi cahaya alami antar-hari pada s2/s3 tetap terekam). Lengkap
 dengan metrik live (kelebaran wajah, kemiringan, brightness). **Foto dijepret
 otomatis** saat pose tercapai & stabil (6 frame berturut-turut) dan lolos
 gate penuh — termasuk anti-spoof. Gagal gate = pose diulang otomatis. Tugas
-subjek cuma mengikuti arahan di layar sampai counter `tersimpan 8/8`.
+subjek cuma mengikuti arahan di layar sampai semua pose wajib selesai.
 
 - **SPACE** = jepret manual (darurat; tetap melewati gate)
+- **s** = lewati pose opsional (pencahayaan)
 - **q** = keluar; lanjutkan kapan saja dengan perintah yang sama (penomoran
   file lanjut otomatis, pose yang sudah tersimpan tidak diulang)
 
@@ -108,8 +112,9 @@ uv run python scripts/guided_capture.py --mode eval --subject <nama> --session s
 uv run python scripts/collect_data.py --check data/raw/<nama>/s2
 ```
 
-Mode `eval` memandu **10 pose**: 8 pose enroll + 2 pose sulit (remang ekstrem,
-miring ekstrem). Ulangi untuk `s3` di hari berbeda dari `s1` dan `s2`.
+Mode `eval` memandu **7 pose**: 5 wajib + 2 opsional (remang ekstrem, miring
+ekstrem — jadwalkan saat sesi malam bila memungkinkan). Ulangi untuk `s3` di
+hari berbeda dari `s1` dan `s2`.
 
 ### 4.4 Serangan spoof (per orang: 10 + 10)
 
