@@ -1,21 +1,17 @@
-# `mobile/` — Aplikasi Mobile (bagian Raihan)
+# smartin_facerecog
 
-> Folder ini untuk aplikasi mobile (Flutter/React Native — menyesuaikan
-> pilihan Raihan). Belum ada kode; struktur `lib/` dan `assets/` disiapkan.
+A new Flutter project.
 
-## Tugas mobile (dari desain bersama — docs/DESAIN.md §1)
+## Getting Started
 
-1. Login/akun — mengikat HP ke `user_id`
-2. Validasi GPS/geofence "user ada di area kerja"
-3. Rekam ±2 detik → kirim batch frame JPEG + `user_id` ke API
-4. Tampilkan verdict: `match / no_match / spoof / no_face / low_quality`
-   (panduan UI per status ada di [docs/API.md](../docs/API.md))
+This project is a starting point for a Flutter application.
 
-## Integrasi API
+A few resources to get you started if this is your first Flutter project:
 
-Kontrak lengkap: **[docs/API.md](../docs/API.md)** (endpoint, format,
-error code, contoh curl). Server dev bisa dinyalakan oleh tim AI kapan saja
-untuk testing — koordinasi via chat.
+- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
+- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
 
-Catatan penting (dari kontrak): app **tidak** melakukan matching lokal —
-semua keputusan dari server; record presensi resmi diturunkan dari log server.
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
