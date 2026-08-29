@@ -37,6 +37,9 @@ data/spoof/screen/*.jpg                serangan: wajah dari layar HP
 
 ## 3. Prosedur foto (per subjek)
 
+0. Pilih kamera dulu: `uv run python scripts/capture_webcam.py --list`
+   (webcam USB biasanya `camera[1]` bila DroidCam menempati index 0; tool
+   punya auto-fallback bila index salah).
 1. Kamera laptop/HP pegangan tetap; subjek ~50–70 cm dari kamera.
 2. Sesi s1: ambil 8 foto mengikuti checklist: tegak, miring kiri, miring
    kanan, mundur 1 langkah, dekat, cahaya depan, cahaya samping, remang ringan.
