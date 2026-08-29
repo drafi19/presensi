@@ -22,7 +22,7 @@ enroll:
   min_images: 3             # minimal gambar lolos agar enroll sah (ideal 5-10, DESAIN §5)
 
 api:
-  host: 127.0.0.1
+  host: 0.0.0.0                # 0.0.0.0 = bisa diakses perangkat lain di WiFi (demo Raihan)
   port: 8000
   api_key: dev-key-change-me   # WAJIB override via env PRES_API_KEY di deployment
   max_images: 20               # batas file per request (enroll/verify)
