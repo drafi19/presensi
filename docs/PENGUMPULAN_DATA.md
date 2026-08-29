@@ -71,65 +71,68 @@ data/spoof/screen/<subject>/*.jpg      serangan: wajah dari layar HP
 
 ## 4. Checklist per subjek (ikuti berurutan)
 
-### 4.1 Enroll — sesi `s1` (±5 menit)
+### 4.1 Enroll — sesi `s1` (±5 menit, TERPANDU OTOMATIS)
 
-Subjek duduk ~50–70 cm dari kamera, kamera stabil (tumpu/buku). Jendela
-preview muncul: **SPACE = jepret, q = keluar**, counter di pojok layar.
+Subjek duduk ~50–70 cm dari kamera, kamera stabil (tumpu/buku). Jalankan:
 
 ```bash
-uv run python scripts/capture_webcam.py --camera 1 --out data/raw/<nama>/s1 --count 8
+uv run python scripts/guided_capture.py --mode enroll --subject <nama> --session s1 --camera 1
 ```
 
-8 pose sesuai urutan (satu jepret per pose):
+Program yang **mengarahkan**: tiap pose tampil besar di layar (tegak → condong
+kiri → condong kanan → mundur → dekat → terang → samping → remang), lengkap
+dengan metrik live (kelebaran wajah, kemiringan, brightness). **Foto dijepret
+otomatis** saat pose tercapai & stabil (10 frame berturut-turut) dan lolos
+gate penuh — termasuk anti-spoof. Gagal gate = pose diulang otomatis. Tugas
+subjek cuma mengikuti arahan di layar sampai counter `tersimpan 8/8`.
 
-1. menghadap tegak
-2. miring kepala kiri (±15°)
-3. miring kepala kanan (±15°)
-4. mundur satu langkah
-5. maju dekat (±40 cm)
-6. cahaya dari depan wajah
-7. cahaya dari samping
-8. remang ringan (lampu diredupkan separuh)
+- **SPACE** = jepret manual (darurat; tetap melewati gate)
+- **q** = keluar; lanjutkan kapan saja dengan perintah yang sama (penomoran
+  file lanjut otomatis, pose yang sudah tersimpan tidak diulang)
 
-### 4.2 Validasi langsung — JANGAN LEWATI
+Validasi akhir sesi (harus 100% OK karena sudah difilter saat capture):
 
 ```bash
 uv run python scripts/collect_data.py --check data/raw/<nama>/s1
 ```
 
-Semua baris harus `OK`. Foto `DITOLAK` → **ulangi foto pose itu sekarang**
-(sebelum subjek pergi) — hapus file yang ditolak, jepret ulang, cek lagi.
-Panduan perbaikan ada di §5.
+> Cadangan (mode manual per jepretan): `capture_webcam.py` — pakai bila
+> lingkungan tidak memungkinkan auto-capture (mis. cahaya tak bisa diubah
+> cukup untuk memenuhi kriteria pose otomatis). Foto manual WAJIB lolos
+> `--check` sebelum lanjut.
 
 ### 4.3 Evaluasi — sesi `s2` dan `s3` (beda hari dengan s1)
 
 ```bash
-uv run python scripts/capture_webcam.py --camera 1 --out data/raw/<nama>/s2 --count 10
+uv run python scripts/guided_capture.py --mode eval --subject <nama> --session s2 --camera 1
 uv run python scripts/collect_data.py --check data/raw/<nama>/s2
 ```
 
-Isi 10 foto bebas variasi (yang penting wajah jelas & cukup terang), termasuk
-**2 foto "sulit"**: remang lebih kuat, pose miring ekstrem ringan.
-Ulangi persis sama untuk `s3` di hari yang berbeda dari `s1` dan `s2`.
+Mode `eval` memandu **10 pose**: 8 pose enroll + 2 pose sulit (remang ekstrem,
+miring ekstrem). Ulangi untuk `s3` di hari berbeda dari `s1` dan `s2`.
 
 ### 4.4 Serangan spoof (per orang: 10 + 10)
 
-**Print** — cetak wajah subjek dari foto s1 (ukuran wajah ±15 cm), pegang di
-depan kamera seperti sedang presensi, variasikan jarak:
+**Print** — cetak wajah subjek dari foto s1 (±15 cm); pemegang foto bergerak
+mengikuti arahan jarak di layar:
 
 ```bash
-uv run python scripts/capture_webcam.py --camera 1 --out data/spoof/print/<nama> --count 10
+uv run python scripts/guided_capture.py --mode spoof --attack print --subject <nama> --camera 1
 ```
 
-**Screen** — tampilkan foto wajahnya full-screen di HP lain, layar menghadap
-kamera (10×/orang, variasi jarak & kemiringan layar):
+**Screen** — tampilkan foto wajah full-screen di HP lain, layar menghadap kamera:
 
 ```bash
-uv run python scripts/capture_webcam.py --camera 1 --out data/spoof/screen/<nama> --count 10
+uv run python scripts/guided_capture.py --mode spoof --attack screen --subject <nama> --camera 1
 ```
 
-Validasi kedua folder dengan `--check` juga (yang dicek: wajah terdeteksi;
-label `spoof(...)` boleh muncul di sini — justru itulah yang nanti diukur).
+Mode spoof memandu 10 varian (jarak sedang/dekat/jauh/miring, bergilir).
+Catatan: di mode ini gate anti-spoof sengaja dilewati — label `spoof` pada
+data serangan memang yang nanti diukur. Tetap divalidasi wajahnya terdeteksi:
+
+```bash
+uv run python scripts/collect_data.py --check data/spoof/print/<nama>
+```
 
 ### 4.5 Rekap progres
 
