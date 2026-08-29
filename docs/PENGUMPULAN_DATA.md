@@ -82,7 +82,7 @@ uv run python scripts/guided_capture.py --mode enroll --subject <nama> --session
 Program yang **mengarahkan**: tiap pose tampil besar di layar (tegak → condong
 kiri → condong kanan → mundur → dekat → terang → samping → remang), lengkap
 dengan metrik live (kelebaran wajah, kemiringan, brightness). **Foto dijepret
-otomatis** saat pose tercapai & stabil (10 frame berturut-turut) dan lolos
+otomatis** saat pose tercapai & stabil (6 frame berturut-turut) dan lolos
 gate penuh — termasuk anti-spoof. Gagal gate = pose diulang otomatis. Tugas
 subjek cuma mengikuti arahan di layar sampai counter `tersimpan 8/8`.
 

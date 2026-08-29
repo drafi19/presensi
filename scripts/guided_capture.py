@@ -35,15 +35,39 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from presensi.pipeline.verify import VerifyPipeline, load_config  # noqa: E402
 
 # ---------------------------------------------------------------- konstanta ---
-STREAK_NEEDED = 10      # frame berturut-turut memenuhi kondisi sebelum jepret
+# Threshold DI-LONGGARKAN (feedback sesi nyata: terlalu sulit dilewati).
+# Kalibrasi final tetap di M4c dari data sungguhan.
+STREAK_NEEDED = 6       # frame berturut-turut memenuhi kondisi sebelum jepret (was 10)
 COOLDOWN_S = 1.0        # jeda setelah jepret
-ROLL_TILT = 10.0        # derajat; ambang "condong"
-ROLL_STRAIGHT = 12.0    # derajat; ambang "tegak"
-W_BACK = 0.55           # mundur: lebar wajah < 55% baseline
-W_NEAR = 1.30           # dekat: lebar wajah > 130% baseline
-B_BRIGHT = 1.10         # terang: brightness > 110% baseline
-B_DIM = 0.55            # remang: brightness < 55% baseline
-B_DIM_HARD = 0.40       # remang ekstrem (pose sulit eval)
+ROLL_TILT = 6.0         # derajat; ambang "condong" (was 10)
+ROLL_STRAIGHT = 15.0    # derajat; ambang "tegak" (was 12)
+W_BACK = 0.70           # mundur: lebar wajah < 70% baseline (was 0.55)
+W_NEAR = 1.15           # dekat: lebar wajah > 115% baseline (was 1.30)
+B_BRIGHT = 1.05         # terang: brightness > 105% baseline (was 1.10)
+B_DIM = 0.72            # remang: brightness < 72% baseline (was 0.55)
+B_DIM_HARD = 0.55       # remang ekstrem (pose sulit eval) (was 0.40)
+ROLL_EXTREME = 18.0     # miring ekstrem eval (was 25)
+
+
+def _beep(notes: list[tuple[int, int]]) -> None:
+    """Suara di thread terpisah (winsound stdlib Windows; diam di OS lain)."""
+    import threading
+
+    def run() -> None:
+        try:
+            import winsound
+            for freq, ms in notes:
+                winsound.Beep(freq, ms)
+        except Exception:  # noqa: BLE001
+            pass
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+SND_OK = [(880, 120), (1318, 180)]        # ding naik: foto tersimpan
+SND_NEXT = [(1174, 150)]                  # tone tunggal: lanjut pose
+SND_REJECT = [(330, 220)]                 # tone rendah: ditolak, ulangi
+SND_DONE = [(880, 120), (1174, 120), (1567, 250)]  # fanfare: semua selesai
 
 
 @dataclass
@@ -87,7 +111,7 @@ POSES_EVAL_EXTRA = [
     ("POSE 9/10: REMANG EKSTREM", "redupkan lampu lagi (sangat remang)",
      lambda m, c: m.bright < B_DIM_HARD * c.get("base_bright", 1e9), False),
     ("POSE 10/10: MIRING EKSTREM", "condongkan kepala lebih ekstrem",
-     lambda m, c: abs(m.roll) > 25.0, False),
+     lambda m, c: abs(m.roll) > ROLL_EXTREME, False),
 ]
 
 SPOOF_HINTS = [
@@ -167,6 +191,7 @@ def main() -> int:
     streak = 0
     saved = 0
     last_shot = 0.0
+    flash_until = 0.0
 
     while saved < target:
         try:
@@ -241,9 +266,13 @@ def main() -> int:
                 if pose_i == 1 or (pose_i == 2 and ctx.get("tilt_sign") is None):
                     ctx["tilt_sign"] = 1 if m.roll > 0 else -1
                 pose_i += 1
-                print(f"  [OK] {p.name}  (roll={m.roll:.0f} w={m.face_w:.0f} bright={bright:.0f})")
+                flash_until = time.time() + 1.2
+                _beep(SND_OK + SND_NEXT if saved < target else SND_DONE)
+                print(f"  [OK] {p.name}  (roll={m.roll:.0f} w={m.face_w:.0f} bright={bright:.0f})"
+                      + ("" if saved < target else "  << SEMUA POSE SELESAI"))
             else:
                 streak = 0
+                _beep(SND_REJECT)
                 print(f"  [DITOLAK] {rejected} — pose diulang otomatis")
 
         # ---------------- tampilan panduan ----------------
@@ -264,6 +293,10 @@ def main() -> int:
                     (0, 255, 0) if in_pose else (200, 200, 200), 2)
         cv2.putText(disp, f"tersimpan {saved}/{target}", (10, h - 55),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        if time.time() < flash_until:  # banner hijau sesaat setelah jepret sukses
+            cv2.rectangle(disp, (0, h // 2 - 50), (w_, h // 2 + 50), (0, 160, 0), -1)
+            cv2.putText(disp, "BERHASIL! POSE SELANJUTNYA...", (40, h // 2 + 12),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 255, 255), 3)
         cv2.imshow("guided_capture", disp)
 
         key = cv2.waitKey(1) & 0xFF
@@ -277,8 +310,11 @@ def main() -> int:
                 saved += 1
                 pose_i += 1
                 streak = 0
+                flash_until = time.time() + 1.2
+                _beep(SND_OK + SND_NEXT if saved < target else SND_DONE)
                 print(f"  [MANUAL] tersimpan ({saved}/{target})")
             else:
+                _beep(SND_REJECT)
                 print("  [MANUAL DITOLAK] gate tidak lolos")
 
     cap.release()

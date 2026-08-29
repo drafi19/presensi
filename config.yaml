@@ -28,7 +28,7 @@ api:
   max_images: 20               # batas file per request (enroll/verify)
 
 quality:
-  blur_min_variance: 60.0     # variance Laplacian minimum
+  blur_min_variance: 35.0     # variance Laplacian minimum (60 terlalu ketat utk webcam; kalibrasi final di M4c)
   face_min_px: 112            # lebar bounding box wajah minimum (px)
   brightness_min: 40.0        # mean brightness minimum (0-255)
   brightness_max: 240.0
