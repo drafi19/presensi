@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presensi API — Test Console</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin: 0; background: #111; color: #eee; }
+  header { padding: 12px 16px; background: #1b1b1b; border-bottom: 1px solid #333;
+           display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0; flex: 1; }
+  input, button, select { font: inherit; padding: 6px 10px; border-radius: 6px;
+           border: 1px solid #444; background: #222; color: #eee; }
+  button { cursor: pointer; background: #2d5bd7; border-color: #2d5bd7; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.gray { background: #333; border-color: #444; }
+  button.red { background: #b3372f; border-color: #b3372f; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .card { background: #1b1b1b; border: 1px solid #333; border-radius: 10px; padding: 12px; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; color: #9db7ff; }
+  video { width: 100%; border-radius: 8px; background: #000; }
+  .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  #log { font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: #0a0a0a;
+         border: 1px solid #333; border-radius: 8px; padding: 10px; height: 300px;
+         overflow-y: auto; white-space: pre-wrap; }
+  .step { padding: 10px 14px; font-size: 20px; font-weight: 700; border-radius: 8px;
+          background: #333; margin-bottom: 8px; text-align: center; }
+  .step.active { background: #2d5bd7; }
+  .step.done { background: #2e7d32; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #333; }
+  .ok { background: #2e7d32; } .bad { background: #b3372f; } .warn { background: #b58a1f; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Presensi API — Test Console</h1>
+  <label>Server <input id="base" value="." size="14"></label>
+  <label>API Key <input id="key" type="password" value="dev-key-change-me" size="18"></label>
+  <span id="health" class="pill">—</span>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Kamera</h2>
+    <video id="cam" autoplay playsinline muted></video>
+    <div class="row">
+      <button id="btnCam" class="gray">Aktifkan kamera</button>
+      <label>user_id <input id="uid" value="raihan" size="12"></label>
+      <span id="caminfo" class="pill">—</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Log</h2>
+    <div id="log"></div>
+  </section>
+
+  <section class="card">
+    <h2>1 · Enroll</h2>
+    <p style="margin:4px 0 10px;font-size:13px;color:#aaa">
+      Jepret 5 foto (SPACE / tombol) → dikirim ke <code>/api/enroll</code>.</p>
+    <div class="row">
+      <button id="btnSnap" disabled>+ Jepret (<span id="nSnap">0</span>/5)</button>
+      <button id="btnEnroll" disabled>Enroll</button>
+      <button id="btnReset" class="gray">Reset</button>
+    </div>
+    <div class="row" id="thumbs" style="gap:6px"></div>
+  </section>
+
+  <section class="card">
+    <h2>2 · Presensi (liveness: kedip + senyum)</h2>
+    <div id="steps"></div>
+    <div class="row">
+      <button id="btnLive" disabled>Mulai liveness</button>
+      <span id="liveState" class="pill">idle</span>
+    </div>
+    <p style="font-size:12px;color:#aaa;margin:8px 0 0">
+      Server mengirim urutan acak — ikuti instruksi di atas. Rekam ±10 fps selama
+      seluruh challenge, lalu otomatis dikirim.</p>
+  </section>
+
+  <section class="card" style="grid-column: 1 / -1;">
+    <h2>3 · Verify sederhana (tanpa liveness)</h2>
+    <div class="row">
+      <button id="btnVerify" disabled>Verify sekarang (5 frame)</button>
+      <span style="font-size:12px;color:#aaa">memakai 5 frame terakhir dari kamera</span>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const logEl = $("log");
+function log(msg, cls) {
+  const d = document.createElement("div");
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  if (cls) d.style.color = cls;
+  logEl.prepend(d);
+}
+const base = () => $("base").value.replace(/\/$/, "");
+const headers = () => ({ "X-API-Key": $("key").value });
+async function api(path, opts = {}) {
+  const r = await fetch(base() + path, { headers: headers(), ...opts });
+  const text = await r.text();
+  let body; try { body = JSON.parse(text); } catch { body = text; }
+  if (!r.ok) throw { status: r.status, body };
+  return body;
+}
+
+// ---------- health ----------
+async function ping() {
+  try {
+    const h = await api("/health");
+    $("health").textContent = `ok · ${h.registered_users} user · ${h.model_version}`;
+    $("health").className = "pill ok";
+  } catch (e) {
+    $("health").textContent = "server tidak terjangkau";
+    $("health").className = "pill bad";
+  }
+}
+setInterval(ping, 5000); ping();
+
+// ---------- kamera ----------
+let stream, recorder = [];
+$("btnCam").onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+    $("cam").srcObject = stream;
+    const track = stream.getVideoTracks()[0];
+    const s = track.getSettings();
+    $("caminfo").textContent = `${s.width}x${s.height}`;
+    $("btnSnap").disabled = false;
+    $("btnLive").disabled = false;
+    $("btnVerify").disabled = false;
+    log("kamera aktif");
+  } catch (e) { log("gagal kamera: " + e.message, "#f88"); }
+};
+function grabFrame() {
+  const v = $("cam");
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0);
+  return new Promise(res => c.toBlob(res, "image/jpeg", 0.9));
+}
+function fdAppendFiles(fd, blobs, name = "files") {
+  blobs.forEach((b, i) => fd.append(name, b, `f${String(i).padStart(3, "0")}.jpg`));
+}
+
+// ---------- enroll ----------
+let snaps = [];
+$("btnSnap").onclick = async () => {
+  if (snaps.length >= 5) return;
+  snaps.push(await grabFrame());
+  $("nSnap").textContent = snaps.length;
+  const t = document.createElement("img");
+  t.src = URL.createObjectURL(snaps[snaps.length - 1]);
+  t.width = 90; t.style.borderRadius = "6px";
+  $("thumbs").appendChild(t);
+  $("btnEnroll").disabled = snaps.length < 1;
+};
+$("btnReset").onclick = () => { snaps = []; $("thumbs").innerHTML = ""; $("nSnap").textContent = 0; };
+$("btnEnroll").onclick = async () => {
+  const uid = $("uid").value.trim();
+  const fd = new FormData(); fd.append("user_id", uid); fdAppendFiles(fd, snaps);
+  log(`enroll ${uid} (${snaps.length} foto)...`);
+  try {
+    const r = await api("/api/enroll", { method: "POST", body: fd });
+    log(`ENROLL OK: ${JSON.stringify(r)}`, "#8f8");
+  } catch (e) { log(`ENROLL GAGAL (${e.status}): ${JSON.stringify(e.body)}`, "#f88"); }
+};
+
+// ---------- verify sederhana ----------
+$("btnVerify").onclick = async () => {
+  const uid = $("uid").value.trim();
+  const fd = new FormData();
+  if (uid) fd.append("user_id", uid);
+  const blobs = [];
+  for (let i = 0; i < 5; i++) blobs.push(await grabFrame());
+  fdAppendFiles(fd, blobs);
+  log("verify sederhana...");
+  try {
+    const r = await api("/api/verify", { method: "POST", body: fd });
+    log(`VERIFY: ${JSON.stringify(r)}`, r.status === "match" ? "#8f8" : "#fb5");
+  } catch (e) { log(`VERIFY GAGAL (${e.status}): ${JSON.stringify(e.body)}`, "#f88"); }
+};
+
+// ---------- liveness ----------
+const btnLive = $("btnLive"), liveState = $("liveState");
+btnLive.onclick = runLiveness;
+
+async function runLiveness() {
+  btnLive.disabled = true;
+  const uid = $("uid").value.trim();
+  try {
+    const fd = new FormData(); if (uid) fd.append("user_id", uid);
+    const init = await api("/api/verify/liveness/init", { method: "POST", body: fd });
+    log(`session ${init.session_id.slice(0, 8)}… steps=${JSON.stringify(init.steps)}`);
+
+    // tampilkan langkah
+    const stepsEl = $("steps"); stepsEl.innerHTML = "";
+    const items = [["neutral", init.instructions.neutral], ...init.steps.map(s => [s, init.instructions[s]])];
+    const els = items.map(([k, text], i) => {
+      const d = document.createElement("div");
+      d.className = "step"; d.textContent = `${i + 1}. ${text}`;
+      stepsEl.appendChild(d); return d;
+    });
+
+    // rekam ±10 fps sampai selesai semua fase (durasi: 2.5s baseline + 5s x 2 fase + buffer)
+    recorder = [];
+    const totalMs = 2500 + 5000 * init.steps.length + 2500;
+    const t0 = performance.now();
+    els[0].classList.add("active");
+    let idx = 0;
+    await new Promise(res => {
+      const iv = setInterval(async () => {
+        const el = Math.floor((performance.now() - t0) / 2800); // ganti highlight ±2.8 dtk
+        els.forEach((e, i) => e.className = i < el ? "step done" : (i === el ? "step active" : "step"));
+        if (el >= els.length) { clearInterval(iv); res(); return; }
+        recorder.push(await grabFrame());
+        liveState.textContent = `merekam ${recorder.length} frame…`;
+      }, 100); // ±10 fps
+    });
+    els.forEach(e => e.className = "step done");
+    liveState.textContent = `mengirim ${recorder.length} frame…`;
+
+    const fd = new FormData();
+    if (uid) fd.append("user_id", uid);
+    fdAppendFiles(fd, recorder);
+    const r = await api(`/api/verify/liveness/${init.session_id}`, { method: "POST", body: fd });
+    log(`LIVENESS OK → ${JSON.stringify(r)}`, r.status === "match" ? "#8f8" : "#fb5");
+    liveState.textContent = `selesai: ${r.status}`;
+    liveState.className = "pill " + (r.status === "match" ? "ok" : "warn");
+  } catch (e) {
+    log(`LIVENESS GAGAL (${e.status}): ${JSON.stringify(e.body)}`, "#f88");
+    liveState.textContent = "gagal (" + e.status + ")";
+    liveState.className = "pill bad";
+  } finally { btnLive.disabled = false; }
+}
+
+log("Test console siap. Aktifkan kamera untuk mulai.");
+</script>
+</body>
+</html>

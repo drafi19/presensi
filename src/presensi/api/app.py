@@ -12,11 +12,13 @@ from __future__ import annotations
 import io
 import logging
 import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 import cv2
 import numpy as np
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from ..pipeline.verify import VerifyPipeline, load_config
 from .audit import AuditLog
@@ -47,6 +49,15 @@ app.include_router(liveness_router)
 
 
 # ---------------------------------------------------------------- endpoints ---
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
+@app.get("/test")
+def test_console():
+    """Halaman testing web (enroll + liveness) — untuk dev/integrasi."""
+    return FileResponse(_STATIC_DIR / "test.html")
+
+
 @app.get("/health")
 def health():
     pipe: VerifyPipeline = _state["pipe"]
