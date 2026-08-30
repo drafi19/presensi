@@ -123,6 +123,12 @@ class VerifyPipeline:
             return None, "embedding_failed"
         return emb, None
 
+    def reload_gallery(self) -> int:
+        """Baca ulang galeri dari disk (panggil tiap verify — CLI/API lain bisa
+        menulis galeri kapan saja). Return jumlah user."""
+        self.gallery = self.store.load_all()
+        return len(self.gallery)
+
     def remove_user(self, user_id: str) -> bool:
         """Hapus user dari galeri (disk + memori). Return True bila ada."""
         ok = self.store.delete(user_id)

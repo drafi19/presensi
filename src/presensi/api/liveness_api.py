@@ -153,6 +153,7 @@ async def liveness_complete(session_id: str,
 
     # ---- liveness lolos: verify penuh pada frame dgn wajah ----
     frames_ok = [f for f, e in zip(frames, ear_seq) if e is not None]
+    pipe.reload_gallery()  # galeri bisa diubah CLI/API lain — jangan pakai cache basi
     verdict, _ = pipe.verify_batch(frames_ok, claimed_user=user_id)
     _state["audit"].append(user_id, verdict,
                            _state["cfg"]["project"]["model_version"],

@@ -74,6 +74,7 @@ async def verify(files: list[UploadFile] = File(...),
     pipe: VerifyPipeline = _state["pipe"]
     cfg = _state["cfg"]
     frames = await read_frames(files, cfg["api"]["max_images"])
+    pipe.reload_gallery()  # galeri bisa diubah CLI/API lain — jangan pakai cache basi
     verdict, _per_frame = pipe.verify_batch(frames, claimed_user=user_id)
     _state["audit"].append(user_id, verdict,
                            cfg["project"]["model_version"],
