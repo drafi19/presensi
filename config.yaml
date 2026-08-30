@@ -26,6 +26,10 @@ api:
   port: 8000
   api_key: dev-key-change-me   # WAJIB override via env PRES_API_KEY di deployment
   max_images: 20               # batas file per request (enroll/verify)
+  # HTTPS opsional TIDAK dipakai (keputusan: kembali HTTP murni).
+  # Konsekuensi diterima: kamera browser TIDAK tersedia di perangkat lain
+  # (secure-context policy) — testing wajah via CLI (verify_liveness.py /
+  # guided_capture.py); Raihan mengintegrasikan app native (bukan browser).
 
 quality:
   # MODE INTEGRASI-TEST: sengaja sangat longgar (Raihan testing flow, bukan akurasi).
