@@ -26,6 +26,13 @@ from .runtime import _state, read_frames, require_key
 log = logging.getLogger("presensi.api")
 
 
+def _err(status: int, description: str, detail) -> tuple:
+    """Helper responses={...} utk error codes di OpenAPI."""
+    return (status, {"description": description,
+                     "content": {"application/json": {"examples": {
+                         "error": {"value": {"detail": detail}}}}}})
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     cfg = load_config()
@@ -47,6 +54,34 @@ app.include_router(liveness_router)
 
 
 # ---------------------------------------------------------------- endpoints ---
+_VERIFY_RESPONSES = {
+    200: {
+        "description": "Verdict (200 berarti sistem jalan; keputusan ada di field `status`)",
+        "content": {"application/json": {"examples": {
+            "match": {"summary": "match — wajah cocok (user_id non-null)",
+                      "value": {"status": "match", "user_id": "raihan",
+                                "confidence": 0.98, "frames_valid": 5, "frames_total": 5}},
+            "no_match": {"summary": "no_match — wajah valid, bukan kandidat",
+                         "value": {"status": "no_match", "user_id": None,
+                                   "confidence": 0.15, "frames_valid": 5, "frames_total": 5}},
+            "spoof": {"summary": "spoof — foto/layar terdeteksi",
+                      "value": {"status": "spoof", "user_id": None,
+                                "confidence": 0.17, "frames_valid": 5, "frames_total": 5}},
+            "no_face": {"summary": "no_face — tak ada wajah di frame",
+                        "value": {"status": "no_face", "user_id": None,
+                                  "confidence": None, "frames_valid": 0, "frames_total": 5}},
+            "low_quality": {"summary": "low_quality — buram/gelap/frame valid kurang",
+                            "value": {"status": "low_quality", "user_id": None,
+                                      "confidence": None, "frames_valid": 0, "frames_total": 5}},
+        }}}},
+    **dict([
+        _err(401, "API key hilang", "X-API-Key header wajib"),
+        _err(403, "API key salah", "API key salah"),
+        _err(422, "Payload bermasalah", "file 'f001.jpg' bukan JPEG/PNG valid"),
+    ]),
+}
+
+
 @app.get("/health")
 def health():
     pipe: VerifyPipeline = _state["pipe"]
@@ -54,7 +89,23 @@ def health():
             "registered_users": len(pipe.gallery)}
 
 
-@app.post("/api/enroll", dependencies=[Depends(require_key)])
+@app.post("/api/enroll", dependencies=[Depends(require_key)], responses={
+    200: {
+        "description": "Enroll berhasil",
+        "content": {"application/json": {"examples": {
+            "ok": {"value": {"user_id": "raihan", "enrolled": True, "accepted": 5,
+                             "min_required": 3, "rejected": [],
+                             "model_version": "buffalo_l", "n_embeddings": 5}},
+        }}}},
+    **dict([
+        _err(401, "API key hilang", "X-API-Key header wajib"),
+        _err(403, "API key salah", "API key salah"),
+        _err(422, "Lolos gate kurang dari minimal",
+             {"user_id": "cici", "enrolled": False, "accepted": 1, "min_required": 3,
+              "rejected": [{"index": 2, "reason": "blurry(var=36.0)"}],
+              "model_version": "buffalo_l"}),
+    ]),
+})
 async def enroll(user_id: str = Form(...),
                  files: list[UploadFile] = File(...)):
     """Enroll/replace user: N gambar -> embeddings tersimpan (DESAIN §5)."""
@@ -67,7 +118,8 @@ async def enroll(user_id: str = Form(...),
     return summary
 
 
-@app.post("/api/verify", dependencies=[Depends(require_key)])
+@app.post("/api/verify", dependencies=[Depends(require_key)],
+          responses=_VERIFY_RESPONSES)
 async def verify(files: list[UploadFile] = File(...),
                  user_id: str | None = Form(None)):
     """Batch frame -> verdict (1:1 bila user_id dikirim, else 1:N)."""

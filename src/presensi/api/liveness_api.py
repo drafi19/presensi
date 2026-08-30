@@ -28,6 +28,55 @@ from .runtime import _state, read_frames, require_key
 
 router = APIRouter(prefix="/api/verify", tags=["liveness"])
 
+_ERRS = dict([
+    (401, {"description": "API key hilang",
+           "content": {"application/json": {"examples": {"e": {
+               "value": {"detail": "X-API-Key header wajib"}}}}}}),
+    (403, {"description": "API key salah",
+           "content": {"application/json": {"examples": {"e": {
+               "value": {"detail": "API key salah"}}}}}}),
+])
+
+_COMPLETE_RESPONSES = {
+    200: {
+        "description": "Liveness lolos + verdict presensi",
+        "content": {"application/json": {"examples": {
+            "ok": {"value": {
+                "liveness": {"passed": True, "steps": ["smile", "blink"],
+                             "missing": [], "blink_detected": True,
+                             "smile_detected": True},
+                "status": "match", "user_id": "raihan", "confidence": 0.98,
+                "frames_valid": 8, "frames_total": 8}},
+        }}}},
+    404: {"description": "Session tidak ditemukan / kedaluwarsa (TTL 5 menit)",
+          "content": {"application/json": {"examples": {"e": {
+              "value": {"detail": "session tidak ditemukan/kedaluwarsa"}}}}}},
+    409: {"description": "Liveness GAGAL (challenge tak terpenuhi) ATAU session sudah dipakai",
+          "content": {"application/json": {"examples": {
+              "liveness_fail": {"value": {"detail": {
+                  "status": "liveness_fail", "passed": False,
+                  "steps": ["smile", "blink"], "missing": ["blink", "smile"],
+                  "blink_detected": False, "smile_detected": False}}},
+              "session_used": {"value": {"detail": "session sudah dipakai"}}}}}},
+    422: {"description": "Payload bermasalah (jumlah frame / bukan gambar)",
+          "content": {"application/json": {"examples": {"e": {
+              "value": {"detail": "frame liveness harus 30..40 (±10 fps)"}}}}}},
+    **_ERRS,
+}
+
+_INIT_RESPONSES = {
+    200: {
+        "description": "Session liveness dibuat — ikuti `steps` (urutan acak)",
+        "content": {"application/json": {"examples": {"ok": {"value": {
+            "session_id": "bqb-jGyLaTnyCkslueBUAFOwyOui1X-n",
+            "steps": ["smile", "blink"], "baseline_frames": 25,
+            "assumed_fps": 10.0,
+            "instructions": {"neutral": "hadap kamera, ekspresi netral",
+                             "blink": "KEDIP sekali", "smile": "SENYUM lebar"},
+            "registered": True}}}}}},
+    **_ERRS,
+}
+
 _SESSION_TTL_S = 300.0
 _sessions: dict[str, dict] = {}
 ASSUME_FPS = 10.0  # app disarankan ±10 fps utk frame liveness (docs/API.md)
@@ -39,7 +88,8 @@ def _gc() -> None:
         _sessions.pop(sid, None)
 
 
-@router.post("/liveness/init", dependencies=[Depends(require_key)])
+@router.post("/liveness/init", dependencies=[Depends(require_key)],
+             responses=_INIT_RESPONSES)
 async def liveness_init(user_id: str | None = Form(None)):
     _gc()
     pipe = _state["pipe"]
@@ -60,7 +110,8 @@ async def liveness_init(user_id: str | None = Form(None)):
             "registered": user_id is not None and user_id in pipe.gallery}
 
 
-@router.post("/liveness/{session_id}", dependencies=[Depends(require_key)])
+@router.post("/liveness/{session_id}", dependencies=[Depends(require_key)],
+             responses=_COMPLETE_RESPONSES)
 async def liveness_complete(session_id: str,
                             files: list[UploadFile] = File(...),
                             user_id: str | None = Form(None)):
